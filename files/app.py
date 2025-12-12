@@ -313,7 +313,7 @@ with st.sidebar:
 
 # Main content
 tab_edit, tab_schedule, tab_stats, tab_detailed, tab_workload, tab_issues = st.tabs([
-    "✏️ Edit Data", "📅 Weekly Schedule", "📊 Daily Stats", "📋 Detailed Schedule", "👥 Teacher Workload", "⚠️ Issues"
+     "📅 Weekly Schedule", "✏️ Edit Data", "📊 Daily Stats", "📋 Detailed Schedule", "👥 Teacher Workload", "⚠️ Issues"
 ])
 
 with tab_edit:
