@@ -316,8 +316,8 @@ with st.sidebar:
         st.warning("⚠️ Data modified. Re-run optimization.")
 
 # Main content
-tab_edit, tab_schedule, tab_stats, tab_detailed, tab_workload, tab_issues = st.tabs([
-    "✏️ Edit Data", "📅 Weekly Schedule", "📊 Daily Stats", "📋 Detailed Schedule", "👥 Teacher Workload", "⚠️ Issues"
+tab_edit, tab_mobile, tab_schedule, tab_stats, tab_detailed, tab_workload, tab_issues = st.tabs([
+    "✏️ Edit Data", "📱 Mobile View", "📅 Weekly Schedule", "📊 Daily Stats", "📋 Detailed Schedule", "👥 Teacher Workload", "⚠️ Issues"
 ])
 
 with tab_edit:
@@ -475,6 +475,119 @@ with tab_edit:
                     if key.startswith('filter_'):
                         del st.session_state[key]
                 st.rerun()
+
+# Mobile View Tab
+with tab_mobile:
+    if not st.session_state.optimization_run:
+        st.info("👆 Click 'Run Optimization' in the sidebar to generate the schedule")
+    else:
+        schedule_df = st.session_state.schedule_df
+        
+        st.subheader("📱 Mobile Schedule View")
+        st.caption("Optimized for phones and tablets")
+        
+        # Day selector
+        days = schedule_df['Day'].cat.categories.tolist()
+        selected_day = st.selectbox("📅 Select Day", days, key="mobile_day_selector")
+        
+        # Filter schedule for selected day
+        day_schedule = schedule_df[schedule_df['Day'] == selected_day].sort_values('Time_Slot')
+        
+        if day_schedule.empty:
+            st.info(f"No classes scheduled on {selected_day}")
+        else:
+            # Summary metrics for the day
+            total_classes = len(day_schedule)
+            total_children = day_schedule['Children'].sum()
+            staffed = len(day_schedule[day_schedule['Status'] == 'Fully Staffed'])
+            
+            st.markdown(f"### {selected_day}")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Classes", total_classes)
+            with col2:
+                st.metric("Children", total_children)
+            with col3:
+                st.metric("✅ Staffed", staffed)
+            
+            st.divider()
+            
+            # Group by time slot
+            time_slots = sorted(day_schedule['Time_Slot'].unique())
+            
+            for time_slot in time_slots:
+                st.markdown(f"### ⏰ {time_slot}")
+                
+                slot_classes = day_schedule[day_schedule['Time_Slot'] == time_slot]
+                
+                for _, cls in slot_classes.iterrows():
+                    # Determine status styling
+                    if cls['Status'] == 'Fully Staffed':
+                        status_color = "#d4edda"
+                        border_color = "#28a745"
+                        status_emoji = "✅"
+                    else:
+                        status_color = "#fff3cd"
+                        border_color = "#ffc107"
+                        status_emoji = "⚠️"
+                    
+                    # Age group emoji
+                    age_icons = {
+                        'Toddler': '👶',
+                        'Pre-K': '🧒',
+                        'Elementary': '👦',
+                        'Infant': '🍼'
+                    }
+                    age_icon = age_icons.get(cls['Class_Type'], '📚')
+                    
+                    # Create card-style display
+                    st.markdown(f"""
+                        <div style="
+                            background-color: {status_color};
+                            padding: 1.5rem;
+                            border-radius: 12px;
+                            border-left: 6px solid {border_color};
+                            margin-bottom: 1rem;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        ">
+                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">
+                                {status_emoji} {age_icon} {cls['Class_Type']}
+                            </h3>
+                            <p style="margin: 0.5rem 0; font-size: 1.1rem; color: #555;">
+                                <strong>👥 {cls['Children']} Children</strong>
+                            </p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # Teacher assignments in expandable section
+                    with st.expander("👨‍🏫 View Teachers", expanded=False):
+                        st.markdown("**Lead Teachers:**")
+                        if cls['Lead_Assigned'] != 'NONE':
+                            for lead in cls['Lead_Assigned'].split(', '):
+                                st.markdown(f"- 👨‍🏫 {lead}")
+                        else:
+                            st.markdown("- ⚠️ No lead teacher assigned")
+                        
+                        st.markdown("**Assistant Teachers:**")
+                        if cls['Assistant_Assigned'] != 'NONE':
+                            for assistant in cls['Assistant_Assigned'].split(', '):
+                                st.markdown(f"- 👤 {assistant}")
+                        else:
+                            st.markdown("- ⚠️ No assistants assigned")
+                        
+                        if cls['Status'] != 'Fully Staffed':
+                            st.warning(f"⚠️ {cls['Status']}")
+                
+                st.divider()
+            
+            # Quick navigation
+            st.markdown("### 🔄 Quick Navigation")
+            nav_cols = st.columns(len(days))
+            for i, day in enumerate(days):
+                with nav_cols[i]:
+                    if st.button(day[:3], key=f"nav_{day}", width="stretch"):
+                        st.session_state.mobile_day_selector = day
+                        st.rerun()
 
 if not st.session_state.optimization_run:
     with tab_schedule:
