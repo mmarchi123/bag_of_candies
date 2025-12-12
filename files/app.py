@@ -17,7 +17,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Fixed file path
 EXCEL_FILE_PATH = 'teacher_scheduling_template.xlsx'
 
 # ==================== AUTHENTICATION ====================
@@ -316,8 +315,8 @@ with st.sidebar:
         st.warning("⚠️ Data modified. Re-run optimization.")
 
 # Main content
-tab_edit, tab_mobile, tab_schedule, tab_stats, tab_detailed, tab_workload, tab_issues = st.tabs([
-    "✏️ Edit Data", "📱 Mobile View", "📅 Weekly Schedule", "📊 Daily Stats", "📋 Detailed Schedule", "👥 Teacher Workload", "⚠️ Issues"
+tab_edit, tab_schedule, tab_stats, tab_detailed, tab_workload, tab_issues = st.tabs([
+    "✏️ Edit Data", "📅 Weekly Schedule", "📊 Daily Stats", "📋 Detailed Schedule", "👥 Teacher Workload", "⚠️ Issues"
 ])
 
 with tab_edit:
@@ -476,128 +475,41 @@ with tab_edit:
                         del st.session_state[key]
                 st.rerun()
 
-# Mobile View Tab
-with tab_mobile:
-    if not st.session_state.optimization_run:
-        st.info("👆 Click 'Run Optimization' in the sidebar to generate the schedule")
-    else:
-        schedule_df = st.session_state.schedule_df
-        
-        st.subheader("📱 Mobile Schedule View")
-        st.caption("Optimized for phones and tablets")
-        
-        # Day selector
-        days = schedule_df['Day'].cat.categories.tolist()
-        selected_day = st.selectbox("📅 Select Day", days, key="mobile_day_selector")
-        
-        # Filter schedule for selected day
-        day_schedule = schedule_df[schedule_df['Day'] == selected_day].sort_values('Time_Slot')
-        
-        if day_schedule.empty:
-            st.info(f"No classes scheduled on {selected_day}")
-        else:
-            # Summary metrics for the day
-            total_classes = len(day_schedule)
-            total_children = day_schedule['Children'].sum()
-            staffed = len(day_schedule[day_schedule['Status'] == 'Fully Staffed'])
-            
-            st.markdown(f"### {selected_day}")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("Classes", total_classes)
-            with col2:
-                st.metric("Children", total_children)
-            with col3:
-                st.metric("✅ Staffed", staffed)
-            
-            st.divider()
-            
-            # Group by time slot
-            time_slots = sorted(day_schedule['Time_Slot'].unique())
-            
-            for time_slot in time_slots:
-                st.markdown(f"### ⏰ {time_slot}")
-                
-                slot_classes = day_schedule[day_schedule['Time_Slot'] == time_slot]
-                
-                for _, cls in slot_classes.iterrows():
-                    # Determine status styling
-                    if cls['Status'] == 'Fully Staffed':
-                        status_color = "#d4edda"
-                        border_color = "#28a745"
-                        status_emoji = "✅"
-                    else:
-                        status_color = "#fff3cd"
-                        border_color = "#ffc107"
-                        status_emoji = "⚠️"
-                    
-                    # Age group emoji
-                    age_icons = {
-                        'Toddler': '👶',
-                        'Pre-K': '🧒',
-                        'Elementary': '👦',
-                        'Infant': '🍼'
-                    }
-                    age_icon = age_icons.get(cls['Class_Type'], '📚')
-                    
-                    # Create card-style display
-                    st.markdown(f"""
-                        <div style="
-                            background-color: {status_color};
-                            padding: 1.5rem;
-                            border-radius: 12px;
-                            border-left: 6px solid {border_color};
-                            margin-bottom: 1rem;
-                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                        ">
-                            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.5rem;">
-                                {status_emoji} {age_icon} {cls['Class_Type']}
-                            </h3>
-                            <p style="margin: 0.5rem 0; font-size: 1.1rem; color: #555;">
-                                <strong>👥 {cls['Children']} Children</strong>
-                            </p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # Teacher assignments in expandable section
-                    with st.expander("👨‍🏫 View Teachers", expanded=False):
-                        st.markdown("**Lead Teachers:**")
-                        if cls['Lead_Assigned'] != 'NONE':
-                            for lead in cls['Lead_Assigned'].split(', '):
-                                st.markdown(f"- 👨‍🏫 {lead}")
-                        else:
-                            st.markdown("- ⚠️ No lead teacher assigned")
-                        
-                        st.markdown("**Assistant Teachers:**")
-                        if cls['Assistant_Assigned'] != 'NONE':
-                            for assistant in cls['Assistant_Assigned'].split(', '):
-                                st.markdown(f"- 👤 {assistant}")
-                        else:
-                            st.markdown("- ⚠️ No assistants assigned")
-                        
-                        if cls['Status'] != 'Fully Staffed':
-                            st.warning(f"⚠️ {cls['Status']}")
-                
-                st.divider()
-            
-            # Quick navigation
-            st.markdown("### 🔄 Quick Navigation")
-            nav_cols = st.columns(len(days))
-            for i, day in enumerate(days):
-                with nav_cols[i]:
-                    if st.button(day[:3], key=f"nav_{day}", width="stretch"):
-                        st.session_state.mobile_day_selector = day
-                        st.rerun()
-
+# Show message if optimization not run yet
 if not st.session_state.optimization_run:
     with tab_schedule:
         st.info("👆 Click 'Run Optimization' in the sidebar to generate the schedule")
+    with tab_stats:
+        st.info("👆 Click 'Run Optimization' in the sidebar to generate statistics")
+    with tab_detailed:
+        st.info("👆 Click 'Run Optimization' in the sidebar to view detailed schedule")
+    with tab_workload:
+        st.info("👆 Click 'Run Optimization' in the sidebar to view teacher workload")
+    with tab_issues:
+        st.info("👆 Click 'Run Optimization' in the sidebar to identify issues")
 else:
     schedule_df = st.session_state.schedule_df
     workload_df = st.session_state.workload_df
     
+    # Summary metrics (shown in all tabs)
+    total_classes = len(schedule_df)
+    fully_staffed = len(schedule_df[schedule_df['Status'] == 'Fully Staffed'])
+    understaffed = total_classes - fully_staffed
+    
     with tab_schedule:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Classes", total_classes)
+        with col2:
+            st.metric("✅ Fully Staffed", fully_staffed, delta=f"{(fully_staffed/total_classes)*100:.0f}%")
+        with col3:
+            st.metric("⚠️ Understaffed", understaffed)
+        with col4:
+            st.metric("Avg Utilization", f"{workload_df['Utilization_%'].mean():.1f}%")
+        
+        st.divider()
         st.subheader("Weekly Calendar View")
+        
         days = schedule_df['Day'].cat.categories.tolist()
         time_slots = sorted(schedule_df['Time_Slot'].unique())
         
@@ -614,7 +526,6 @@ else:
                         for _, cls in classes_at_slot.iterrows():
                             box_class = 'success-box' if cls['Status'] == 'Fully Staffed' else 'warning-box'
                             icon = '✅' if cls['Status'] == 'Fully Staffed' else '⚠️'
-                            
                             age_icon = {'Toddler': '👶', 'Pre-K': '🧒', 'Elementary': '👦', 'Infant': '🍼'}.get(cls['Class_Type'], '📚')
                             
                             st.markdown(f'<div class="{box_class}">', unsafe_allow_html=True)
@@ -630,6 +541,173 @@ else:
                     else:
                         st.markdown("*No classes*")
             st.divider()
+    
+    with tab_stats:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Classes", total_classes)
+        with col2:
+            st.metric("✅ Fully Staffed", fully_staffed)
+        with col3:
+            st.metric("⚠️ Understaffed", understaffed)
+        with col4:
+            st.metric("Avg Utilization", f"{workload_df['Utilization_%'].mean():.1f}%")
+        
+        st.divider()
+        st.subheader("📊 Daily Statistics")
+        
+        days = schedule_df['Day'].cat.categories.tolist()
+        
+        for day in days:
+            st.markdown(f"### 📅 {day}")
+            day_classes = schedule_df[schedule_df['Day'] == day]
+            
+            if day_classes.empty:
+                st.info(f"No classes on {day}")
+                continue
+            
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Classes", len(day_classes))
+            with col2:
+                st.metric("Total Children", day_classes['Children'].sum())
+            with col3:
+                staffed = len(day_classes[day_classes['Status'] == 'Fully Staffed'])
+                st.metric("✅ Fully Staffed", staffed)
+            with col4:
+                st.metric("⚠️ Understaffed", len(day_classes) - staffed)
+            
+            with st.expander(f"View {day} Details"):
+                st.dataframe(day_classes[['Time_Slot', 'Class_Type', 'Children', 'Lead_Assigned', 'Assistant_Assigned', 'Status']], 
+                           width="stretch", hide_index=True)
+            
+            st.divider()
+        
+        # Weekly charts
+        st.markdown("### 📈 Weekly Overview")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            daily_children = schedule_df.groupby('Day')['Children'].sum()
+            fig1 = go.Figure(data=[go.Bar(x=daily_children.index.tolist(), y=daily_children.values, marker_color='#1f77b4')])
+            fig1.update_layout(title='Total Children per Day', xaxis_title='Day', yaxis_title='Children', height=300)
+            st.plotly_chart(fig1, width="stretch")
+        
+        with col2:
+            daily_classes = schedule_df.groupby('Day').size()
+            fig2 = go.Figure(data=[go.Bar(x=daily_classes.index.tolist(), y=daily_classes.values, marker_color='#ff7f0e')])
+            fig2.update_layout(title='Total Classes per Day', xaxis_title='Day', yaxis_title='Classes', height=300)
+            st.plotly_chart(fig2, width="stretch")
+    
+    with tab_detailed:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Classes", total_classes)
+        with col2:
+            st.metric("✅ Fully Staffed", fully_staffed)
+        with col3:
+            st.metric("⚠️ Understaffed", understaffed)
+        with col4:
+            st.metric("Avg Utilization", f"{workload_df['Utilization_%'].mean():.1f}%")
+        
+        st.divider()
+        st.subheader("Detailed Schedule")
+        
+        days = schedule_df['Day'].cat.categories.tolist()
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            selected_days = st.multiselect("Filter by Day", days, default=days)
+        with col2:
+            age_groups = schedule_df['Class_Type'].unique().tolist()
+            selected_age_groups = st.multiselect("Filter by Age Group", age_groups, default=age_groups)
+        with col3:
+            selected_status = st.multiselect("Filter by Status", schedule_df['Status'].unique(), default=schedule_df['Status'].unique())
+        
+        filtered_schedule = schedule_df[(schedule_df['Day'].isin(selected_days)) & 
+                                       (schedule_df['Class_Type'].isin(selected_age_groups)) &
+                                       (schedule_df['Status'].isin(selected_status))]
+        
+        st.dataframe(filtered_schedule, width="stretch", hide_index=True)
+        
+        csv = filtered_schedule.to_csv(index=False)
+        st.download_button("📥 Download Schedule as CSV", data=csv, file_name="teacher_schedule.csv", mime="text/csv")
+    
+    with tab_workload:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Classes", total_classes)
+        with col2:
+            st.metric("✅ Fully Staffed", fully_staffed)
+        with col3:
+            st.metric("⚠️ Understaffed", understaffed)
+        with col4:
+            st.metric("Avg Utilization", f"{workload_df['Utilization_%'].mean():.1f}%")
+        
+        st.divider()
+        st.subheader("Teacher Workload Analysis")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            fig = px.bar(workload_df, x='Teacher_Name', y='Utilization_%', color='Teacher_Type',
+                        title='Teacher Utilization', labels={'Utilization_%': 'Utilization (%)', 'Teacher_Name': 'Teacher'},
+                        color_discrete_map={'Lead': '#1f77b4', 'Assistant': '#ff7f0e'})
+            fig.add_hline(y=100, line_dash="dash", line_color="red", annotation_text="Max Capacity")
+            st.plotly_chart(fig, width="stretch")
+        
+        with col2:
+            st.markdown("### Summary Stats")
+            st.metric("Most Utilized", workload_df.iloc[0]['Teacher_Name'], f"{workload_df.iloc[0]['Utilization_%']}%")
+            st.metric("Least Utilized", workload_df.iloc[-1]['Teacher_Name'], f"{workload_df.iloc[-1]['Utilization_%']}%")
+            underutilized = workload_df[workload_df['Utilization_%'] < 50]
+            st.metric("Underutilized (<50%)", len(underutilized))
+        
+        st.divider()
+        st.dataframe(workload_df, width="stretch", hide_index=True)
+    
+    with tab_issues:
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Classes", total_classes)
+        with col2:
+            st.metric("✅ Fully Staffed", fully_staffed)
+        with col3:
+            st.metric("⚠️ Understaffed", understaffed)
+        with col4:
+            st.metric("Avg Utilization", f"{workload_df['Utilization_%'].mean():.1f}%")
+        
+        st.divider()
+        st.subheader("Issues & Recommendations")
+        
+        understaffed_df = schedule_df[schedule_df['Status'] != 'Fully Staffed']
+        
+        if understaffed_df.empty:
+            st.success("🎉 Perfect! All classes are fully staffed!")
+        else:
+            st.warning(f"⚠️ {len(understaffed_df)} classes need attention")
+            
+            st.markdown("### Understaffed Classes")
+            st.dataframe(understaffed_df, width="stretch", hide_index=True)
+            
+            st.markdown("### 💡 Recommendations")
+            
+            missing_leads = understaffed_df[understaffed_df['Status'].str.contains('Lead', na=False)]
+            missing_assistants = understaffed_df[understaffed_df['Status'].str.contains('Assistant', na=False)]
+            
+            if not missing_leads.empty:
+                st.markdown(f"🔴 **{len(missing_leads)} classes missing Lead Teachers**")
+                st.info("Consider hiring more lead teachers or adjusting lead teacher availability")
+            
+            if not missing_assistants.empty:
+                st.markdown(f"🟡 **{len(missing_assistants)} classes missing Assistant Teachers**")
+                st.info("Consider hiring more assistants or cross-training existing teachers")
+            
+            underutilized = workload_df[workload_df['Utilization_%'] < 50]
+            if not underutilized.empty:
+                st.markdown("### 📊 Underutilized Teachers")
+                st.write("These teachers have availability that could help fill gaps:")
+                st.dataframe(underutilized, width="stretch", hide_index=True)
+                st.info("💡 Consider adjusting their skills or availability to cover understaffed classes")
 
 st.divider()
 st.caption("Teacher Scheduling System | Powered by PuLP & Streamlit")
