@@ -57,7 +57,6 @@ def check_password():
             st.error("😕 Username or password incorrect")
         
         st.markdown("---")
-        st.caption("Default credentials:\n\n**Username:** admin\n\n**Password:** admin123")
 
     return False
 
