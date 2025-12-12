@@ -312,8 +312,8 @@ with st.sidebar:
         st.warning("⚠️ Data modified. Re-run optimization.")
 
 # Main content
-tab_schedule, tab_edit, tab_stats, tab_detailed, tab_workload, tab_issues = st.tabs([
-     "📅 Weekly Schedule", "✏️ Edit Data", "📊 Daily Stats", "📋 Detailed Schedule", "👥 Teacher Workload", "⚠️ Issues"
+tab_edit, tab_schedule,  tab_stats, tab_detailed, tab_workload, tab_issues = st.tabs([
+     "✏️ Edit Data","📅 Weekly Schedule",  "📊 Daily Stats", "📋 Detailed Schedule", "👥 Teacher Workload", "⚠️ Issues"
 ])
 
 with tab_edit:
